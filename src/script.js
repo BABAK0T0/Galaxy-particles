@@ -22,6 +22,10 @@ const parameters = {
   radius: 5,
   branches: 3,
   spin: 1,
+  randomness: 0.2,
+  randomnessPower: 3,
+  insideColor = '#ff6030',
+  outsideColor = '#ff6030'
 };
 
 let particleGeometry = null;
@@ -52,9 +56,26 @@ const generateGalaxy = () => {
       ((i % parameters.branches) / parameters.branches) * Math.PI * 2;
     const spinAngle = parameters.spin * radius;
 
-    positions[i3] = Math.cos(branchAngle + spinAngle) * radius;
-    positions[i3 + 1] = 0;
-    positions[i3 + 2] = Math.sin(branchAngle + spinAngle) * radius;
+    // We need to spread stars on the outside and more condensed star on the inside.
+    const randomX =
+      Math.pow(Math.random(), parameters.randomnessPower) *
+      (Math.random() < 0.5 ? 1 : -1) *
+      parameters.randomness *
+      radius;
+    const randomY =
+      Math.pow(Math.random(), parameters.randomnessPower) *
+      (Math.random() < 0.5 ? 1 : -1) *
+      parameters.randomness *
+      radius;
+    const randomZ =
+      Math.pow(Math.random(), parameters.randomnessPower) *
+      (Math.random() < 0.5 ? 1 : -1) *
+      parameters.randomness *
+      radius;
+
+    positions[i3] = Math.cos(branchAngle + spinAngle) * radius + randomX;
+    positions[i3 + 1] = randomY;
+    positions[i3 + 2] = Math.sin(branchAngle + spinAngle) * radius + randomZ;
   }
   particleGeometry.setAttribute(
     "position",
@@ -103,6 +124,24 @@ gui
   .min(-5)
   .max(5)
   .step(0.001)
+  .onFinishChange(generateGalaxy);
+gui
+  .add(parameters, "randomness")
+  .min(0)
+  .max(2)
+  .step(0.001)
+  .onFinishChange(generateGalaxy);
+gui
+  .add(parameters, "randomnessPower")
+  .min(1)
+  .max(10)
+  .step(0.001)
+  .onFinishChange(generateGalaxy);
+gui
+  .addColor(parameters, "insideColor")
+  .onFinishChange(generateGalaxy);
+gui
+  .add(parameters, "outsideColor")
   .onFinishChange(generateGalaxy);
 /**
  * Sizes
