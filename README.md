@@ -6,7 +6,7 @@ Exercice from [threejs-journey](https://threejs-journey.xyz/) by [Bruno Simon](h
 
 In the project directory, you can run:
 
-### `yarn run install`
+### `yarn install`
 
 Then the following command
 
