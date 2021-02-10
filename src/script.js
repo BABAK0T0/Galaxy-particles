@@ -1,6 +1,8 @@
 import "./style.css";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
+import galaxyVertexShader from "./shaders/galaxy/vertex.glsl";
+import galaxyFragmentShader from "./shaders/galaxy/fragment.glsl";
 import * as dat from "dat.gui";
 
 /**
@@ -17,11 +19,11 @@ const scene = new THREE.Scene();
 
 // Galaxy
 const parameters = {
-  count: 10000,
-  size: 0.01,
+  count: 100000,
+  // size: 0.01,
   radius: 5,
   branches: 3,
-  spin: 1,
+  // spin: 1,
   randomness: 0.2,
   randomnessPower: 3,
   insideColor: "#ff6030",
@@ -42,6 +44,9 @@ const generateGalaxy = () => {
   particleGeometry = new THREE.BufferGeometry();
   const positions = new Float32Array(parameters.count * 3);
   const colors = new Float32Array(parameters.count * 3);
+  const scales = new Float32Array(parameters.count);
+  const randomness = new Float32Array(parameters.count * 3);
+
   const colorInside = new THREE.Color(parameters.insideColor);
   const colorOutside = new THREE.Color(parameters.outsideColor);
 
@@ -60,8 +65,9 @@ const generateGalaxy = () => {
     const radius = Math.random() * parameters.radius;
     const branchAngle =
       ((i % parameters.branches) / parameters.branches) * Math.PI * 2;
-    const spinAngle = parameters.spin * radius;
+    // const spinAngle = parameters.spin * radius;
 
+    // Randomness
     // We need to spread stars on the outside and more condensed star on the inside.
     const randomX =
       Math.pow(Math.random(), parameters.randomnessPower) *
@@ -79,9 +85,16 @@ const generateGalaxy = () => {
       parameters.randomness *
       radius;
 
-    positions[i3] = Math.cos(branchAngle + spinAngle) * radius + randomX;
-    positions[i3 + 1] = randomY;
-    positions[i3 + 2] = Math.sin(branchAngle + spinAngle) * radius + randomZ;
+    randomness[i3 + 0] = randomX;
+    randomness[i3 + 1] = randomY;
+    randomness[i3 + 2] = randomZ;
+
+    // positions[i3] = Math.cos(branchAngle + spinAngle) * radius;
+    positions[i3] = Math.cos(branchAngle) * radius;
+    positions[i3 + 1] = 0;
+    // positions[i3 + 1] = randomY;
+    // positions[i3 + 2] = Math.sin(branchAngle + spinAngle) * radius;
+    positions[i3 + 2] = Math.sin(branchAngle) * radius;
 
     // Color
     const mixedColor = colorInside.clone();
@@ -90,39 +103,57 @@ const generateGalaxy = () => {
     colors[i3] = mixedColor.r;
     colors[i3 + 1] = mixedColor.g;
     colors[i3 + 2] = mixedColor.b;
+
+    scales[i] = Math.random();
   }
+
   particleGeometry.setAttribute(
     "position",
     new THREE.BufferAttribute(positions, 3)
   );
   particleGeometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
+  particleGeometry.setAttribute("aScale", new THREE.BufferAttribute(scales, 1));
+  particleGeometry.setAttribute(
+    "aRandomness",
+    new THREE.BufferAttribute(randomness, 3)
+  );
 
-  particleMaterial = new THREE.PointsMaterial({
-    size: parameters.size,
-    sizeAttenuation: false,
+  // particleMaterial = new THREE.PointsMaterial({
+  //   size: parameters.size,
+  //   sizeAttenuation: false,
+  //   depthWrite: false,
+  //   blending: THREE.AdditiveBlending,
+  //   vertexColors: true,
+  // });
+
+  particleMaterial = new THREE.ShaderMaterial({
     depthWrite: false,
     blending: THREE.AdditiveBlending,
     vertexColors: true,
+    vertexShader: galaxyVertexShader,
+    fragmentShader: galaxyFragmentShader,
+    uniforms: {
+      uSize: { value: 30 * renderer.getPixelRatio() },
+      uTime: { value: 0 },
+    },
   });
 
   particle = new THREE.Points(particleGeometry, particleMaterial);
   scene.add(particle);
 };
 
-generateGalaxy();
-
 gui
   .add(parameters, "count")
   .min(100)
-  .max(100000)
+  .max(200000)
   .step(100)
   .onFinishChange(generateGalaxy);
-gui
-  .add(parameters, "size")
-  .min(0.001)
-  .max(0.1)
-  .step(0.001)
-  .onFinishChange(generateGalaxy);
+// gui
+//   .add(parameters, "size")
+//   .min(0.001)
+//   .max(0.1)
+//   .step(0.001)
+//   .onFinishChange(generateGalaxy);
 gui
   .add(parameters, "radius")
   .min(0.01)
@@ -135,12 +166,12 @@ gui
   .max(20)
   .step(1)
   .onFinishChange(generateGalaxy);
-gui
-  .add(parameters, "spin")
-  .min(-5)
-  .max(5)
-  .step(0.001)
-  .onFinishChange(generateGalaxy);
+// gui
+//   .add(parameters, "spin")
+//   .min(-5)
+//   .max(5)
+//   .step(0.001)
+//   .onFinishChange(generateGalaxy);
 gui
   .add(parameters, "randomness")
   .min(0)
@@ -155,6 +186,7 @@ gui
   .onFinishChange(generateGalaxy);
 gui.addColor(parameters, "insideColor").onFinishChange(generateGalaxy);
 gui.addColor(parameters, "outsideColor").onFinishChange(generateGalaxy);
+
 /**
  * Sizes
  */
@@ -205,6 +237,8 @@ const renderer = new THREE.WebGLRenderer({
 renderer.setSize(sizes.width, sizes.height);
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 
+generateGalaxy();
+
 /**
  * Animate
  */
@@ -213,6 +247,8 @@ const clock = new THREE.Clock();
 const tick = () => {
   const elapsedTime = clock.getElapsedTime();
 
+  // Animate
+  particleMaterial.uniforms.uTime.value = elapsedTime;
   // Update controls
   controls.update();
 
